@@ -34,27 +34,27 @@ import java.util.logging.Level;
 public class Cache {
 	private String q = "'";
 
-	private final String SELECT_POSITION = "select 'id','value','namecache','prefixcache','suffixcache','displaynamecache',"+deltaBuilder()+" from '%s' order by '%s' %s, namecache desc limit 1 offset %d";
-	private final String SELECT_PLAYER = "select 'id','value','namecache','prefixcache','suffixcache','displaynamecache',"+deltaBuilder()+" from '%s' order by '%s' %s, namecache desc";
-	private final String GET_POSITION = "/*%s*/with N as (select *,ROW_NUMBER() OVER (order by '%s' %s, namecache desc) as position from '%s') select 'id','value','namecache','prefixcache','suffixcache','displaynamecache',position,"+deltaBuilder()+" from N where 'id'=?";
+        private final String SELECT_POSITION = "select 'id','value','namecache','prefixcache','suffixcache','displaynamecache',"+deltaBuilder()+" from '%s' order by '%s' %s, 'updated_at' desc, namecache desc limit 1 offset %d";
+        private final String SELECT_PLAYER = "select 'id','value','namecache','prefixcache','suffixcache','displaynamecache',"+deltaBuilder()+" from '%s' order by '%s' %s, 'updated_at' desc, namecache desc";
+        private final String GET_POSITION = "/*%s*/with N as (select *,ROW_NUMBER() OVER (order by '%s' %s, 'updated_at' desc, namecache desc) as position from '%s') select 'id','value','namecache','prefixcache','suffixcache','displaynamecache',position,"+deltaBuilder()+" from N where 'id'=?";
 	private final Map<String, String> CREATE_TABLE = ImmutableMap.of(
-			"sqlite", "create table if not exists '%s' (id TEXT PRIMARY KEY, value DECIMAL(65, 2)"+columnBuilder("DECIMAL(65, 2)")+", namecache TEXT, prefixcache TEXT, suffixcache TEXT, displaynamecache TEXT)",
-			"h2", "create table if not exists '%s' ('id' VARCHAR(36) PRIMARY KEY, 'value' DECIMAL(65, 2)"+columnBuilder("DECIMAL(65, 2)")+", 'namecache' VARCHAR(16), 'prefixcache' VARCHAR(1024), 'suffixcache' VARCHAR(1024), 'displaynamecache' VARCHAR(2048))",
-			"mysql", "create table if not exists '%s' ('id' VARCHAR(36) PRIMARY KEY, 'value' DECIMAL(65, 2)"+columnBuilder("DECIMAL(65, 2)")+", 'namecache' VARCHAR(16), 'prefixcache' VARCHAR(1024), 'suffixcache' VARCHAR(1024), 'displaynamecache' VARCHAR(2048))"
-	);
+                        "sqlite", "create table if not exists '%s' (id TEXT PRIMARY KEY, value DECIMAL(65, 2)"+columnBuilder("DECIMAL(65, 2)")+", namecache TEXT, prefixcache TEXT, suffixcache TEXT, displaynamecache TEXT, updated_at BIGINT)",
+                        "h2", "create table if not exists '%s' ('id' VARCHAR(36) PRIMARY KEY, 'value' DECIMAL(65, 2)"+columnBuilder("DECIMAL(65, 2)")+", 'namecache' VARCHAR(16), 'prefixcache' VARCHAR(1024), 'suffixcache' VARCHAR(1024), 'displaynamecache' VARCHAR(2048), 'updated_at' BIGINT)",
+                        "mysql", "create table if not exists '%s' ('id' VARCHAR(36) PRIMARY KEY, 'value' DECIMAL(65, 2)"+columnBuilder("DECIMAL(65, 2)")+", 'namecache' VARCHAR(16), 'prefixcache' VARCHAR(1024), 'suffixcache' VARCHAR(1024), 'displaynamecache' VARCHAR(2048), 'updated_at' BIGINT)"
+        );
 	private final String REMOVE_PLAYER = "delete from '%s' where 'namecache'=?";
 	private final Map<String, String> LIST_TABLES = ImmutableMap.of(
 			"sqlite", "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';"
 	);
 	private final String DROP_TABLE = "drop table '%s';";
-	private final String INSERT_PLAYER = "insert into '%s' ('id', 'value', 'namecache', 'prefixcache', 'suffixcache', 'displaynamecache'"+tableBuilder()+") values (?, ?, ?, ?, ?, ?"+qBuilder()+")";
-	private final String UPDATE_PLAYER = "update '%s' set 'value'=?, 'namecache'=?, 'prefixcache'=?, 'suffixcache'=?, 'displaynamecache'=?"+updateBuilder()+" where id=?";
-	private final String INSERT_OR_UPDATE_PLAYER = "insert into '%s' ('id', 'value', 'namecache', 'prefixcache', 'suffixcache', 'displaynamecache'"+tableBuilder()+") values (?, ?, ?, ?, ?, ?"+qBuilder()+") ON DUPLICATE KEY update 'value'=?, 'namecache'=?, 'prefixcache'=?, 'suffixcache'=?, 'displaynamecache'=?"+updateBuilder();
-	private final String INSERT_OR_UPDATE_PLAYER_H2 = "merge into '%s' ('id', 'value', 'namecache', 'prefixcache', 'suffixcache', 'displaynamecache'"+tableBuilder()+") values (?, ?, ?, ?, ?, ?"+qBuilder()+")";
+        private final String INSERT_PLAYER = "insert into '%s' ('id', 'value', 'namecache', 'prefixcache', 'suffixcache', 'displaynamecache', 'updated_at'"+tableBuilder()+") values (?, ?, ?, ?, ?, ?, ?"+qBuilder()+")";
+        private final String UPDATE_PLAYER = "update '%s' set 'value'=?, 'namecache'=?, 'prefixcache'=?, 'suffixcache'=?, 'displaynamecache'=?, 'updated_at'=?"+updateBuilder()+" where id=?";
+        private final String INSERT_OR_UPDATE_PLAYER = "insert into '%s' ('id', 'value', 'namecache', 'prefixcache', 'suffixcache', 'displaynamecache', 'updated_at'"+tableBuilder()+") values (?, ?, ?, ?, ?, ?, ?"+qBuilder()+") ON DUPLICATE KEY update 'value'=?, 'namecache'=?, 'prefixcache'=?, 'suffixcache'=?, 'displaynamecache'=?, 'updated_at'=?"+updateBuilder();
+        private final String INSERT_OR_UPDATE_PLAYER_H2 = "merge into '%s' ('id', 'value', 'namecache', 'prefixcache', 'suffixcache', 'displaynamecache', 'updated_at'"+tableBuilder()+") values (?, ?, ?, ?, ?, ?, ?"+qBuilder()+")";
 	private final String QUERY_LASTTOTAL = "select '%s' from '%s' where id=?";
 	private final String QUERY_LASTRESET = "select '%s' from '%s' limit 1";
 	private final String QUERY_IDVALUE = "select id,'value' from '%s'";
-	private final String UPDATE_RESET = "update '%s' set '%s'=?, '%s'=?, '%s'=? where id=?";
+        private final String UPDATE_RESET = "update '%s' set '%s'=?, '%s'=?, '%s'=?, 'updated_at'=? where id=?";
 	private final String QUERY_ALL = "select * from '%s'";
 	private final String CREATE_TIMESTAMP_INDEX = "create index %s_timestamp on '%s' (%s_timestamp)";
 
@@ -649,13 +649,16 @@ public class Cache {
 				statement.setString(5, finalSuffix);
 				statement.setString(6, finalDisplayName);
 
-				Map<TimedType, Double> timedTypeValues = new HashMap<>();
-				timedTypeValues.put(TimedType.ALLTIME, output);
+                                Map<TimedType, Double> timedTypeValues = new HashMap<>();
+                                timedTypeValues.put(TimedType.ALLTIME, output);
 
-				int i = 6;
-				for(TimedType type : TimedType.values()) {
-					if(type == TimedType.ALLTIME) continue;
-					long lastReset = plugin.getTopManager().getLastReset(board, type)*1000;
+                                long updatedAt = System.currentTimeMillis();
+                                statement.setLong(7, updatedAt);
+
+                                int i = 7;
+                                for(TimedType type : TimedType.values()) {
+                                        if(type == TimedType.ALLTIME) continue;
+                                        long lastReset = plugin.getTopManager().getLastReset(board, type)*1000;
 					if(plugin.isShuttingDown()) {
 						method.close(conn);
 					}
@@ -665,19 +668,20 @@ public class Cache {
 					statement.setDouble(++i, timedOut); // delta
 					statement.setDouble(++i, lastTotalNumber); // lasttotal
 					statement.setLong(++i, lastReset == 0 ? System.currentTimeMillis() : lastReset); // timestamp
-					timedTypeValues.put(type, timedOut);
-				}
-				if(!method.getName().equals("h2")) {
-					statement.setDouble(++i, output);
-					statement.setString(++i, player.getName());
-					statement.setString(++i, finalPrefix);
-					statement.setString(++i, finalSuffix);
-					statement.setString(++i, finalDisplayName);
+                                        timedTypeValues.put(type, timedOut);
+                                }
+                                if(!method.getName().equals("h2")) {
+                                        statement.setDouble(++i, output);
+                                        statement.setString(++i, player.getName());
+                                        statement.setString(++i, finalPrefix);
+                                        statement.setString(++i, finalSuffix);
+                                        statement.setString(++i, finalDisplayName);
+                                        statement.setLong(++i, updatedAt);
 
-					for(TimedType type : TimedType.values()) {
-						if(type == TimedType.ALLTIME) continue;
-						Double lastTotal = lastTotals.get(type);
-						double lastTotalNumber = lastTotal == null ? output : lastTotal;
+                                        for(TimedType type : TimedType.values()) {
+                                                if(type == TimedType.ALLTIME) continue;
+                                                Double lastTotal = lastTotals.get(type);
+                                                double lastTotalNumber = lastTotal == null ? output : lastTotal;
 						double timedOut = output-lastTotalNumber;
 						statement.setDouble(++i, timedOut);
 					}
@@ -844,19 +848,20 @@ public class Cache {
 							method.close(con);
 							return;
 						}
-						PreparedStatement p = con.prepareStatement(String.format(
-								method.formatStatement(UPDATE_RESET),
-								tablePrefix+board,
-								t+"_lasttotal",
-								t+"_delta",
-								t+"_timestamp"
-						));
-						p.setDouble(1, uuids.get(idRaw));
-						p.setDouble(2, 0);
-						p.setLong(3, newTime);
-						p.setString(4, idRaw);
-						p.executeUpdate();
-						p.close();
+                                                PreparedStatement p = con.prepareStatement(String.format(
+                                                                method.formatStatement(UPDATE_RESET),
+                                                                tablePrefix+board,
+                                                                t+"_lasttotal",
+                                                                t+"_delta",
+                                                                t+"_timestamp"
+                                                ));
+                                                p.setDouble(1, uuids.get(idRaw));
+                                                p.setDouble(2, 0);
+                                                p.setLong(3, newTime);
+                                                p.setLong(4, newTime);
+                                                p.setString(5, idRaw);
+                                                p.executeUpdate();
+                                                p.close();
 					}
 					method.close(con);
 				} catch (SQLException e) {
@@ -879,13 +884,14 @@ public class Cache {
 			statement.setString(1, row.getId().toString());
 			statement.setDouble(2, row.getValue());
 			statement.setString(3, row.getNamecache());
-			statement.setString(4, row.getPrefixcache());
-			statement.setString(5, row.getSuffixcache());
-			statement.setString(6, row.getDisplaynamecache());
-			int i = 6;
-			for(TimedType type : TimedType.values()) {
-				if(type == TimedType.ALLTIME) continue;
-				if(plugin.isShuttingDown()) {
+                        statement.setString(4, row.getPrefixcache());
+                        statement.setString(5, row.getSuffixcache());
+                        statement.setString(6, row.getDisplaynamecache());
+                        statement.setLong(7, row.getUpdatedAt());
+                        int i = 7;
+                        for(TimedType type : TimedType.values()) {
+                                if(type == TimedType.ALLTIME) continue;
+                                if(plugin.isShuttingDown()) {
 					method.close(conn);
 				}
 				statement.setDouble(++i, row.getDeltas().get(type));

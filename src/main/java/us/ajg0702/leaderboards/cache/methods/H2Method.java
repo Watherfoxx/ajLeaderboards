@@ -123,6 +123,24 @@ public class H2Method implements CacheMethod {
                     statement.executeUpdate("COMMENT ON TABLE \""+tableName+"\" IS '2';");
                     version = 2;
                 }
+                if(version == 2) {
+                    try {
+                        statement.executeUpdate("alter table \""+tableName+"\" add column updated_at BIGINT");
+                    } catch(SQLException e) {
+                        if(e.getMessage().contains("42121")) {
+                            try {
+                                conn.createStatement().executeUpdate("COMMENT ON TABLE \""+tableName+"\" IS '3';");
+                            } catch (SQLException er) {
+                                er.printStackTrace();
+                                throw e;
+                            }
+                        } else {
+                            throw e;
+                        }
+                    }
+                    statement.executeUpdate("COMMENT ON TABLE \""+tableName+"\" IS '3';");
+                    version = 3;
+                }
             }
         } catch (SQLException e) {
             e.printStackTrace();
