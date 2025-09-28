@@ -21,6 +21,7 @@ public class DbRow {
     private final String prefixcache;
     private final String suffixcache;
     private final String displaynamecache;
+    private final long updatedAt;
 
 
 
@@ -33,7 +34,8 @@ public class DbRow {
                 resultSet.getString(getIndex(resultSet, "namecache")),
                 resultSet.getString(getIndex(resultSet, "prefixcache")),
                 resultSet.getString(getIndex(resultSet, "suffixcache")),
-                resultSet.getString(getIndex(resultSet, "displaynamecache"))
+                resultSet.getString(getIndex(resultSet, "displaynamecache")),
+                resultSet.getLong(getIndex(resultSet, "updated_at"))
         );
     }
 
@@ -41,7 +43,7 @@ public class DbRow {
         positionCache.clear();
     }
 
-    private DbRow(UUID id, double value, List<Object> typeMaps, String namecache, String prefixcache, String suffixcache, String displaynamecache) {
+    private DbRow(UUID id, double value, List<Object> typeMaps, String namecache, String prefixcache, String suffixcache, String displaynamecache, long updatedAt) {
         //noinspection unchecked
         this(
                 id,
@@ -52,11 +54,12 @@ public class DbRow {
                 namecache,
                 prefixcache,
                 suffixcache,
-                displaynamecache
+                displaynamecache,
+                updatedAt
         );
     }
 
-    public DbRow(UUID id, double value, Map<TimedType, Double> deltas, Map<TimedType, Double> lastTotals, Map<TimedType, Long> timestamps, String namecache, String prefixcache, String suffixcache, String displaynamecache) {
+    public DbRow(UUID id, double value, Map<TimedType, Double> deltas, Map<TimedType, Double> lastTotals, Map<TimedType, Long> timestamps, String namecache, String prefixcache, String suffixcache, String displaynamecache, long updatedAt) {
         this.id = id;
         this.value = value;
         this.deltas = deltas;
@@ -66,6 +69,7 @@ public class DbRow {
         this.prefixcache = prefixcache;
         this.suffixcache = suffixcache;
         this.displaynamecache = displaynamecache;
+        this.updatedAt = updatedAt;
     }
 
     private static List<Object> getTypeMaps(ResultSet resultSet) throws SQLException {
@@ -120,6 +124,10 @@ public class DbRow {
         return displaynamecache;
     }
 
+    public long getUpdatedAt() {
+        return updatedAt;
+    }
+
 
     public JsonObject toJsonObject() {
         EasyJsonObject out = new EasyJsonObject()
@@ -135,6 +143,7 @@ public class DbRow {
         out.add("prefixcache", getPrefixcache());
         out.add("suffixcache", getSuffixcache());
         out.add("displaynamecache", getDisplaynamecache() == null ? getNamecache() : getDisplaynamecache());
+        out.add("updated_at", getUpdatedAt());
         return out.getHandle();
     }
 
@@ -151,6 +160,8 @@ public class DbRow {
             timestamps.put(type, object.get(type.lowerName()+"_timestamp").getAsLong());
         }
 
+        long updatedAt = object.has("updated_at") ? object.get("updated_at").getAsLong() : 0L;
+
         return new DbRow(
                 UUID.fromString(object.get("id").getAsString()),
                 object.get("value").getAsDouble(),
@@ -158,7 +169,8 @@ public class DbRow {
                 object.get("namecache").getAsString(),
                 object.get("prefixcache").getAsString(),
                 object.get("suffixcache").getAsString(),
-                object.get("displaynamecache").getAsString()
+                object.get("displaynamecache").getAsString(),
+                updatedAt
         );
     }
 }
